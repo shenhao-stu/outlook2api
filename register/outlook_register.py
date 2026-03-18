@@ -336,46 +336,38 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
         # Debug: screenshot after password step
         try:
             page.get_screenshot(path="output/debug_step3.png", full_page=True)
+            with open("output/debug_step3.html", "w", encoding="utf-8") as f:
+                f.write(page.html or "")
             print(f"[T{tid}] Step 3 URL: {page.url}")
         except Exception:
             pass
 
-        # --- Step 3: Enter name ---
-        first, last = _random_name()
-        # New Fluent UI uses name="FirstName" / name="LastName" or similar
-        _set_input('input[name="FirstName"], input[name="firstNameInput"]', first)
-        _set_input('input[name="LastName"], input[name="lastNameInput"]', last)
-        time.sleep(0.5)
-        _click_next()
-        time.sleep(3)
-
-        # --- Step 4: Enter birth date ---
+        # --- Step 3: Birth date (new Fluent UI combines country + DOB, no name step) ---
         year = random.randint(1975, 2000)
         month = random.randint(1, 12)
         day = random.randint(1, 28)
         # New Fluent UI uses select dropdowns or input fields with name attributes
         page.run_js(f"""
-            function setSelect(sel, val) {{
-                const el = document.querySelector(sel);
-                if (el) {{
-                    el.value = val;
-                    el.dispatchEvent(new Event('change', {{bubbles: true}}));
-                    el.dispatchEvent(new Event('input', {{bubbles: true}}));
+            (function() {{
+                function setSelect(sel, val) {{
+                    var el = document.querySelector(sel);
+                    if (el) {{
+                        el.value = String(val);
+                        el.dispatchEvent(new Event('change', {{bubbles: true}}));
+                        el.dispatchEvent(new Event('input', {{bubbles: true}}));
+                    }}
                 }}
-            }}
-            // Try both old IDs and new name-based selectors
-            setSelect('#BirthMonth, select[name="BirthMonth"]', '{month}');
-            setSelect('#BirthDay, select[name="BirthDay"]', '{day}');
-            setSelect('#BirthYear, input[name="BirthYear"]', '{year}');
-            // Also try input type for year
-            const yearInput = document.querySelector('input[name="BirthYear"]');
-            if (yearInput) {{
-                const setter = Object.getOwnPropertyDescriptor(
-                    window.HTMLInputElement.prototype, 'value').set;
-                setter.call(yearInput, '{year}');
-                yearInput.dispatchEvent(new Event('input', {{bubbles: true}}));
-                yearInput.dispatchEvent(new Event('change', {{bubbles: true}}));
-            }}
+                setSelect('#BirthMonth, select[name="BirthMonth"]', '{month}');
+                setSelect('#BirthDay, select[name="BirthDay"]', '{day}');
+                setSelect('#BirthYear, select[name="BirthYear"]', '{year}');
+                var yearInput = document.querySelector('input[name="BirthYear"]');
+                if (yearInput) {{
+                    var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                    setter.call(yearInput, '{year}');
+                    yearInput.dispatchEvent(new Event('input', {{bubbles: true}}));
+                    yearInput.dispatchEvent(new Event('change', {{bubbles: true}}));
+                }}
+            }})();
         """)
         time.sleep(0.5)
         _click_next()
