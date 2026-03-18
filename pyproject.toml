@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "outlook2api"
+version = "0.2.0"
+description = "Mail.tm-compatible API for Outlook accounts + batch registration"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.27",
+]
+
+[project.optional-dependencies]
+register = [
+    "DrissionPage>=4.0",
+    "requests>=2.31",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["outlook2api*", "register*"]

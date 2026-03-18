@@ -1,0 +1,23 @@
+services:
+  outlook2api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "${OUTLOOK2API_PORT:-8001}:8001"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  register:
+    build:
+      context: .
+      dockerfile: Dockerfile.register
+    env_file:
+      - .env
+    volumes:
+      - ./output:/app/output
+    profiles:
+      - register

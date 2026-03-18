@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.env
+.venv/
+venv/
+data/outlook_accounts.json
+output/
+.staging_outlook/
+*.crx
+.claude/

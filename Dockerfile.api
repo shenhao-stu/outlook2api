@@ -1,0 +1,11 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements-api.txt .
+RUN pip install --no-cache-dir -r requirements-api.txt
+
+COPY outlook2api/ outlook2api/
+COPY pyproject.toml .
+
+CMD ["uvicorn", "outlook2api.app:app", "--host", "0.0.0.0", "--port", "8001"]

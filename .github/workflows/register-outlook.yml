@@ -1,0 +1,67 @@
+name: Outlook Account Registration
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "Number of accounts to register"
+        required: false
+        default: "5"
+      threads:
+        description: "Concurrent registration threads"
+        required: false
+        default: "1"
+
+env:
+  CAPTCHA_CLIENT_KEY: ${{ secrets.CAPTCHA_CLIENT_KEY }}
+  PROXY_URL: ${{ secrets.PROXY_URL }}
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Chrome + Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i /tmp/chrome.deb || sudo apt-get install -yf
+          google-chrome --version
+
+      - name: Install Python dependencies
+        run: pip install -r requirements-register.txt
+
+      - name: Start Xvfb
+        run: |
+          Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp -ac &
+          sleep 2
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+
+      - name: Run Outlook registrar
+        env:
+          DISPLAY: ":99"
+        run: |
+          COUNT="${{ github.event.inputs.count || '5' }}"
+          THREADS="${{ github.event.inputs.threads || '1' }}"
+          python -m register.outlook_register --count "$COUNT" --threads "$THREADS"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: outlook-accounts-${{ github.run_id }}
+          path: output/*Outlook.zip
+          retention-days: 30
+          if-no-files-found: warn

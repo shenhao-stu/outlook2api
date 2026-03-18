@@ -1,0 +1,18 @@
+FROM python:3.12-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        chromium xvfb fonts-liberation && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV CHROME_PATH=/usr/bin/chromium
+ENV DISPLAY=:99
+
+WORKDIR /app
+
+COPY requirements-register.txt .
+RUN pip install --no-cache-dir -r requirements-register.txt
+
+COPY register/ register/
+
+ENTRYPOINT ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp -ac & sleep 1 && exec python -m register.outlook_register \"$@\"", "--"]
