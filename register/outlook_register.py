@@ -28,15 +28,13 @@ import random
 import re
 import secrets
 import string
-import sys
-import tempfile
 import threading
 import time
 import traceback
 import urllib.parse
 import zipfile
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Optional
 
 try:
     from DrissionPage import Chromium, ChromiumOptions
@@ -105,35 +103,31 @@ def _check_email_available(email: str) -> bool:
     return False
 
 
-def _create_proxy_extension(host: str, port: int, username: str = "", password: str = "") -> str:
-    """Create Chrome proxy auth extension."""
-    plugin_dir = tempfile.mkdtemp(prefix="outlook_proxy_")
-    manifest = {
-        "version": "1.0.0",
-        "manifest_version": 2,
-        "name": "Proxy Auth",
-        "permissions": ["proxy", "tabs", "webRequest", "webRequestBlocking", "<all_urls>"],
-        "background": {"scripts": ["background.js"]},
-    }
-    bg = f"""
-var config = {{
-    mode: "fixed_servers",
-    rules: {{ singleProxy: {{ scheme: "http", host: "{host}", port: {port} }} }}
-}};
-chrome.proxy.settings.set({{value: config, scope: "regular"}}, function(){{}});
-"""
-    if username and password:
-        bg += f'''
-chrome.webRequest.onAuthRequired.addListener(
-    function(details) {{ return {{ authCredentials: {{ username: "{username}", password: "{password}" }} }}; }},
-    {{urls: ["<all_urls>"]}}, ['blocking']
-);
-'''
-    with open(os.path.join(plugin_dir, "manifest.json"), "w") as f:
-        json.dump(manifest, f)
-    with open(os.path.join(plugin_dir, "background.js"), "w") as f:
-        f.write(bg)
-    return plugin_dir
+def _setup_proxy_auth(tab, username: str, password: str) -> None:
+    """Register CDP Fetch.authRequired handler for proxy authentication.
+
+    Uses Chrome DevTools Protocol instead of MV2 extensions (deprecated in Chrome 127+).
+    """
+    def _on_auth_required(**kwargs):
+        request_id = kwargs.get("requestId")
+        if not request_id:
+            return
+        try:
+            tab.run_cdp("Fetch.continueWithAuth", requestId=request_id,
+                        authChallengeResponse={
+                            "response": "ProvideCredentials",
+                            "username": username,
+                            "password": password,
+                        })
+        except Exception:
+            try:
+                tab.run_cdp("Fetch.continueWithAuth", requestId=request_id,
+                            authChallengeResponse={"response": "CancelAuth"})
+            except Exception:
+                pass
+
+    tab._driver.set_callback("Fetch.authRequired", _on_auth_required, immediate=True)
+    tab.run_cdp("Fetch.enable", handleAuthRequests=True)
 
 
 def _save_staged(content: str) -> str:
@@ -211,7 +205,8 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
         print("[Error] DrissionPage not installed. pip install DrissionPage")
         return None
 
-    proxy_plugin = None
+    proxy_user = ""
+    proxy_pass = ""
     co = ChromiumOptions()
     co.auto_port()
     co.set_timeouts(base=10)
@@ -225,17 +220,22 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
             parsed = urllib.parse.urlparse(proxy)
             host = parsed.hostname or "127.0.0.1"
             port = parsed.port or 8080
-            user = parsed.username or ""
-            pwd = parsed.password or ""
-            proxy_plugin = _create_proxy_extension(host, port, user, pwd)
-            co.add_extension(proxy_plugin)
+            proxy_user = parsed.username or ""
+            proxy_pass = parsed.password or ""
+            scheme = parsed.scheme or "http"
+            co.set_proxy(f"{scheme}://{host}:{port}")
         except Exception as exc:
-            print(f"[T{tid}] Proxy extension error: {exc}")
+            print(f"[T{tid}] Proxy parse error: {exc}")
 
     browser = None
     try:
         browser = Chromium(co)
         page = browser.get_tabs()[-1]
+
+        # Set up CDP proxy authentication if needed
+        if proxy_user and proxy_pass:
+            _setup_proxy_auth(page, proxy_user, proxy_pass)
+            print(f"[T{tid}] Proxy auth configured via CDP")
 
         page.get(SITE_URL)
         time.sleep(4)
@@ -429,9 +429,6 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
                 browser.quit()
             except Exception:
                 pass
-        if proxy_plugin:
-            import shutil
-            shutil.rmtree(proxy_plugin, ignore_errors=True)
 
 
 def bundle_output(output_dir: str = "output") -> Optional[str]:
