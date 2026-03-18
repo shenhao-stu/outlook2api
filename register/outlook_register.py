@@ -263,6 +263,25 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
         except Exception as dbg_exc:
             print(f"[T{tid}] Debug screenshot failed: {dbg_exc}")
 
+        # --- Helper: set input value via React-safe setter ---
+        def _set_input(selector: str, value: str) -> bool:
+            return page.run_js(f"""
+                const el = document.querySelector('{selector}');
+                if (!el) return false;
+                el.focus();
+                const setter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, 'value').set;
+                setter.call(el, '{value}');
+                el.dispatchEvent(new Event('input', {{bubbles: true}}));
+                el.dispatchEvent(new Event('change', {{bubbles: true}}));
+                return true;
+            """)
+
+        def _click_next() -> None:
+            btn = page.ele('css:button[data-testid="primaryButton"]', timeout=15)
+            btn.click()
+
+        # --- Step 1: Enter full email address ---
         email_available = False
         for _ in range(10):
             username = _random_username()
@@ -278,102 +297,103 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
             email_addr = f"{username}@outlook.com"
             print(f"[T{tid}] Using {email_addr} (availability check skipped)")
 
-        # Switch to "Get a new email address"
-        page.run_js("""
-            const sw = document.getElementById('liveSwitch');
-            if (sw) sw.click();
-        """)
-        time.sleep(1)
-
-        # Enter username
-        page.run_js(f"""
-            const inp = document.getElementById('usernameInput');
-            if (inp) {{
-                inp.focus();
-                const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-                setter.call(inp, '{username}');
-                inp.dispatchEvent(new Event('input', {{bubbles: true}}));
-            }}
-        """)
+        _set_input('input[name="Email"], input[type="email"]', email_addr)
         time.sleep(0.5)
-        page.ele("#nextButton", timeout=10).click()
-        time.sleep(2)
-
-        # Enter password
-        password = _random_password()
-        page.run_js(f"""
-            const pwd = document.getElementById('Password');
-            if (pwd) {{
-                const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-                setter.call(pwd, '{password}');
-                pwd.dispatchEvent(new Event('input', {{bubbles: true}}));
-            }}
-        """)
-        time.sleep(0.5)
-        page.ele("#nextButton", timeout=10).click()
+        _click_next()
         time.sleep(3)
 
-        # Handle password rejection
+        # Debug: screenshot after email step
         try:
-            err = page.ele("#PasswordError", timeout=2)
-            if err and err.text:
-                print(f"[T{tid}] Password rejected, retrying...")
-                password = _random_password()
-                page.run_js(f"""
-                    const pwd = document.getElementById('Password');
-                    if (pwd) {{ pwd.value = ''; }}
-                """)
-                time.sleep(0.5)
-                page.run_js(f"""
-                    const pwd = document.getElementById('Password');
-                    if (pwd) {{
-                        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-                        setter.call(pwd, '{password}');
-                    }}
-                """)
-                page.ele("#nextButton", timeout=10).click()
-                time.sleep(2)
+            page.get_screenshot(path="output/debug_step2.png", full_page=True)
+            with open("output/debug_step2.html", "w", encoding="utf-8") as f:
+                f.write(page.html or "")
+            print(f"[T{tid}] Step 2 URL: {page.url}")
         except Exception:
             pass
 
-        # Enter name
-        first, last = _random_name()
-        page.run_js(f"""
-            function setVal(id, val) {{
-                const el = document.getElementById(id);
-                if (el) {{
-                    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-                    setter.call(el, val);
-                    el.dispatchEvent(new Event('input', {{bubbles: true}}));
-                }}
-            }}
-            setVal('firstNameInput', '{first}');
-            setVal('lastNameInput', '{last}');
-        """)
+        # --- Step 2: Enter password ---
+        password = _random_password()
+        _set_input('input[name="Password"], input[type="password"]', password)
         time.sleep(0.5)
-        page.ele("#nextButton", timeout=10).click()
-        time.sleep(2)
+        _click_next()
+        time.sleep(3)
 
-        # Enter birth date
+        # Handle password rejection — retry with new password
+        try:
+            err = page.ele('css:[data-testid="errorMessage"], [role="alert"]', timeout=2)
+            if err and err.text:
+                print(f"[T{tid}] Password rejected: {err.text[:60]}. Retrying...")
+                password = _random_password()
+                page.run_js("document.querySelector('input[type=\"password\"]').value = ''")
+                time.sleep(0.3)
+                _set_input('input[name="Password"], input[type="password"]', password)
+                time.sleep(0.5)
+                _click_next()
+                time.sleep(3)
+        except Exception:
+            pass
+
+        # Debug: screenshot after password step
+        try:
+            page.get_screenshot(path="output/debug_step3.png", full_page=True)
+            print(f"[T{tid}] Step 3 URL: {page.url}")
+        except Exception:
+            pass
+
+        # --- Step 3: Enter name ---
+        first, last = _random_name()
+        # New Fluent UI uses name="FirstName" / name="LastName" or similar
+        _set_input('input[name="FirstName"], input[name="firstNameInput"]', first)
+        _set_input('input[name="LastName"], input[name="lastNameInput"]', last)
+        time.sleep(0.5)
+        _click_next()
+        time.sleep(3)
+
+        # --- Step 4: Enter birth date ---
         year = random.randint(1975, 2000)
         month = random.randint(1, 12)
         day = random.randint(1, 28)
+        # New Fluent UI uses select dropdowns or input fields with name attributes
         page.run_js(f"""
-            const m = document.getElementById('BirthMonth');
-            if (m) m.value = '{month}';
-            const d = document.getElementById('BirthDay');
-            if (d) d.value = '{day}';
-            const y = document.getElementById('BirthYear');
-            if (y) {{ y.value = '{year}'; y.dispatchEvent(new Event('input', {{bubbles: true}})); }}
+            function setSelect(sel, val) {{
+                const el = document.querySelector(sel);
+                if (el) {{
+                    el.value = val;
+                    el.dispatchEvent(new Event('change', {{bubbles: true}}));
+                    el.dispatchEvent(new Event('input', {{bubbles: true}}));
+                }}
+            }}
+            // Try both old IDs and new name-based selectors
+            setSelect('#BirthMonth, select[name="BirthMonth"]', '{month}');
+            setSelect('#BirthDay, select[name="BirthDay"]', '{day}');
+            setSelect('#BirthYear, input[name="BirthYear"]', '{year}');
+            // Also try input type for year
+            const yearInput = document.querySelector('input[name="BirthYear"]');
+            if (yearInput) {{
+                const setter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, 'value').set;
+                setter.call(yearInput, '{year}');
+                yearInput.dispatchEvent(new Event('input', {{bubbles: true}}));
+                yearInput.dispatchEvent(new Event('change', {{bubbles: true}}));
+            }}
         """)
         time.sleep(0.5)
-        page.ele("#nextButton", timeout=10).click()
-        time.sleep(2)
+        _click_next()
+        time.sleep(3)
+
+        # Debug: screenshot after birth date step
+        try:
+            page.get_screenshot(path="output/debug_step5.png", full_page=True)
+            with open("output/debug_step5.html", "w", encoding="utf-8") as f:
+                f.write(page.html or "")
+            print(f"[T{tid}] Step 5 URL: {page.url}")
+        except Exception:
+            pass
 
         # Check for SMS verification wall
         try:
-            phone_label = page.ele("xpath://label[contains(text(),'Phone number')]", timeout=5)
-            if phone_label:
+            sms_el = page.ele('css:input[name="PhoneNumber"], input[type="tel"]', timeout=5)
+            if sms_el:
                 print(f"[T{tid}] SMS verification required - try different proxy")
                 return None
         except Exception:
@@ -421,9 +441,10 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
         # Wait for completion
         for wait in range(30):
             try:
-                ok_btn = page.ele("xpath://span[@class='ms-Button-label label-117' or contains(text(),'Next')]", timeout=3)
-                if ok_btn and ok_btn.states.is_displayed:
-                    ok_btn.click()
+                # Try clicking any "Next" or "Continue" button that appears
+                btn = page.ele('css:button[data-testid="primaryButton"]', timeout=3)
+                if btn and btn.states.is_displayed:
+                    btn.click()
                     break
             except Exception:
                 pass
