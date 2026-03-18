@@ -78,7 +78,9 @@ def _random_password() -> str:
 
 
 def _random_username() -> str:
-    return secrets.token_hex(6) + str(random.randint(100, 999))
+    """Generate username starting with a letter (Microsoft requirement)."""
+    letter = random.choice(string.ascii_lowercase)
+    return letter + secrets.token_hex(5) + str(random.randint(10, 99))
 
 
 def _check_email_available(email: str) -> bool:
@@ -252,16 +254,8 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
         page.get(SITE_URL)
         time.sleep(4)
 
-        # Debug: save page state for troubleshooting
-        try:
-            os.makedirs("output", exist_ok=True)
-            page.get_screenshot(path="output/debug_signup_page.png", full_page=True)
-            with open("output/debug_signup_page.html", "w", encoding="utf-8") as f:
-                f.write(page.html or "")
-            print(f"[T{tid}] Page URL: {page.url}")
-            print(f"[T{tid}] Page title: {page.title}")
-        except Exception as dbg_exc:
-            print(f"[T{tid}] Debug screenshot failed: {dbg_exc}")
+        print(f"[T{tid}] Page URL: {page.url}")
+        print(f"[T{tid}] Page title: {page.title}")
 
         # --- Helper: set input value via React-safe setter ---
         def _set_input(selector: str, value: str) -> bool:
@@ -302,15 +296,6 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
         _click_next()
         time.sleep(3)
 
-        # Debug: screenshot after email step
-        try:
-            page.get_screenshot(path="output/debug_step2.png", full_page=True)
-            with open("output/debug_step2.html", "w", encoding="utf-8") as f:
-                f.write(page.html or "")
-            print(f"[T{tid}] Step 2 URL: {page.url}")
-        except Exception:
-            pass
-
         # --- Step 2: Enter password ---
         password = _random_password()
         _set_input('input[name="Password"], input[type="password"]', password)
@@ -330,15 +315,6 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
                 time.sleep(0.5)
                 _click_next()
                 time.sleep(3)
-        except Exception:
-            pass
-
-        # Debug: screenshot after password step
-        try:
-            page.get_screenshot(path="output/debug_step3.png", full_page=True)
-            with open("output/debug_step3.html", "w", encoding="utf-8") as f:
-                f.write(page.html or "")
-            print(f"[T{tid}] Step 3 URL: {page.url}")
         except Exception:
             pass
 
@@ -372,15 +348,6 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
         time.sleep(0.5)
         _click_next()
         time.sleep(3)
-
-        # Debug: screenshot after birth date step
-        try:
-            page.get_screenshot(path="output/debug_step5.png", full_page=True)
-            with open("output/debug_step5.html", "w", encoding="utf-8") as f:
-                f.write(page.html or "")
-            print(f"[T{tid}] Step 5 URL: {page.url}")
-        except Exception:
-            pass
 
         # Check for SMS verification wall
         try:
