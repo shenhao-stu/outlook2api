@@ -107,7 +107,18 @@ def _setup_proxy_auth(tab, username: str, password: str) -> None:
     """Register CDP Fetch.authRequired handler for proxy authentication.
 
     Uses Chrome DevTools Protocol instead of MV2 extensions (deprecated in Chrome 127+).
+    Fetch.enable intercepts all requests; we must handle both requestPaused (continue)
+    and authRequired (provide credentials).
     """
+    def _on_request_paused(**kwargs):
+        request_id = kwargs.get("requestId")
+        if not request_id:
+            return
+        try:
+            tab.run_cdp("Fetch.continueRequest", requestId=request_id)
+        except Exception:
+            pass
+
     def _on_auth_required(**kwargs):
         request_id = kwargs.get("requestId")
         if not request_id:
@@ -126,6 +137,7 @@ def _setup_proxy_auth(tab, username: str, password: str) -> None:
             except Exception:
                 pass
 
+    tab._driver.set_callback("Fetch.requestPaused", _on_request_paused, immediate=True)
     tab._driver.set_callback("Fetch.authRequired", _on_auth_required, immediate=True)
     tab.run_cdp("Fetch.enable", handleAuthRequests=True)
 
