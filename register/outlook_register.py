@@ -240,6 +240,17 @@ def register_one(tid: int, proxy: Optional[str] = None, captcha_svc: Optional[Fu
         page.get(SITE_URL)
         time.sleep(4)
 
+        # Debug: save page state for troubleshooting
+        try:
+            os.makedirs("output", exist_ok=True)
+            page.get_screenshot(path="output/debug_signup_page.png", full_page=True)
+            with open("output/debug_signup_page.html", "w", encoding="utf-8") as f:
+                f.write(page.html or "")
+            print(f"[T{tid}] Page URL: {page.url}")
+            print(f"[T{tid}] Page title: {page.title}")
+        except Exception as dbg_exc:
+            print(f"[T{tid}] Debug screenshot failed: {dbg_exc}")
+
         email_available = False
         for _ in range(10):
             username = _random_username()

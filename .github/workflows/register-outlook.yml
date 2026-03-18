@@ -65,3 +65,14 @@ jobs:
           path: output/*Outlook.zip
           retention-days: 30
           if-no-files-found: warn
+
+      - name: Upload debug screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-${{ github.run_id }}
+          path: |
+            output/debug_*.png
+            output/debug_*.html
+          retention-days: 7
+          if-no-files-found: warn
