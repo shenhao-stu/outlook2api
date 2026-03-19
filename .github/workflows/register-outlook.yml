@@ -17,8 +17,6 @@ on:
 env:
   CAPTCHA_CLIENT_KEY: ${{ secrets.CAPTCHA_CLIENT_KEY }}
   PROXY_URL: ${{ secrets.PROXY_URL }}
-  OUTLOOK2API_URL: ${{ secrets.OUTLOOK2API_URL }}
-  ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
 
 jobs:
   register:
@@ -70,33 +68,64 @@ jobs:
 
       - name: Auto-import to admin panel
         if: success()
+        env:
+          OUTLOOK2API_URL: ${{ secrets.OUTLOOK2API_URL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: |
           if [ -z "$OUTLOOK2API_URL" ] || [ -z "$ADMIN_PASSWORD" ]; then
-            echo "OUTLOOK2API_URL or ADMIN_PASSWORD not set, skipping import"
+            echo "Skipping auto-import (OUTLOOK2API_URL or ADMIN_PASSWORD not set)"
             exit 0
           fi
-          # Extract accounts from the generated zip file
-          ACCOUNTS=$(python -c "
-          import json, glob, zipfile
+          # Login and get token
+          TOKEN=$(curl -sf -X POST "$OUTLOOK2API_URL/admin/api/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"password\": \"$ADMIN_PASSWORD\"}" | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])" 2>/dev/null)
+          if [ -z "$TOKEN" ]; then
+            echo "Admin login failed, skipping import"
+            exit 0
+          fi
+          # Collect accounts from staging files
+          ACCOUNTS="[]"
+          if [ -d "output/.staging_outlook" ]; then
+            ACCOUNTS=$(python3 -c "
+          import os, json, glob
           accs = []
-          for zf in glob.glob('output/*Outlook.zip'):
+          for f in glob.glob('output/.staging_outlook/outlook_*.json'):
               try:
-                  with zipfile.ZipFile(zf) as z:
-                      data = z.read('accounts.txt').decode().strip()
-                      for line in data.splitlines():
-                          if ':' in line:
-                              accs.append(line.strip())
+                  d = json.load(open(f))
+                  if d.get('email') and d.get('password'):
+                      accs.append(d['email'] + ':' + d['password'])
               except: pass
           print(json.dumps(accs))
           ")
-          if [ "$ACCOUNTS" = "[]" ]; then
+          fi
+          # Also try the zip file
+          for z in output/*Outlook.zip; do
+            [ -f "$z" ] || continue
+            python3 -c "
+          import zipfile, json, sys
+          with zipfile.ZipFile('$z') as zf:
+              for name in zf.namelist():
+                  if name.endswith('.txt'):
+                      content = zf.read(name).decode('utf-8', errors='replace')
+                      existing = json.loads(sys.argv[1]) if sys.argv[1] != '[]' else []
+                      for line in content.strip().splitlines():
+                          line = line.strip()
+                          if ':' in line and line not in existing:
+                              existing.append(line)
+                      print(json.dumps(existing))
+                      sys.exit(0)
+          print(sys.argv[1])
+          " "$ACCOUNTS" > /tmp/accs.json && ACCOUNTS=$(cat /tmp/accs.json)
+          done
+          COUNT=$(echo "$ACCOUNTS" | python3 -c "import sys,json;print(len(json.load(sys.stdin)))")
+          if [ "$COUNT" = "0" ]; then
             echo "No accounts to import"
             exit 0
           fi
-          echo "Importing accounts to $OUTLOOK2API_URL..."
-          curl -sf -X POST "${OUTLOOK2API_URL}/admin/api/accounts/bulk" \
-            -H "Authorization: Bearer ${ADMIN_PASSWORD}" \
-            -H "Content-Type: application/json" \
-            -d "{\"accounts\": $ACCOUNTS, \"source\": \"ci\"}" \
-            && echo "Import successful" \
-            || echo "Import failed (non-fatal)"
+          echo "Importing $COUNT accounts..."
+          RESULT=$(curl -sf -X POST "$OUTLOOK2API_URL/admin/api/accounts/bulk" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d "{\"accounts\": $ACCOUNTS, \"source\": \"ci\"}")
+          echo "Import result: $RESULT"
