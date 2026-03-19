@@ -75,20 +75,20 @@ jobs:
             echo "OUTLOOK2API_URL or ADMIN_PASSWORD not set, skipping import"
             exit 0
           fi
-          # Extract accounts from staging files
-          ACCOUNTS="[]"
-          if [ -d "output/.staging_outlook" ]; then
-            ACCOUNTS=$(python -c "
-          import json, glob
+          # Extract accounts from the generated zip file
+          ACCOUNTS=$(python -c "
+          import json, glob, zipfile
           accs = []
-          for f in glob.glob('output/.staging_outlook/outlook_*.json'):
+          for zf in glob.glob('output/*Outlook.zip'):
               try:
-                  d = json.load(open(f))
-                  accs.append(f\"{d['email']}:{d['password']}\")
+                  with zipfile.ZipFile(zf) as z:
+                      data = z.read('accounts.txt').decode().strip()
+                      for line in data.splitlines():
+                          if ':' in line:
+                              accs.append(line.strip())
               except: pass
           print(json.dumps(accs))
           ")
-          fi
           if [ "$ACCOUNTS" = "[]" ]; then
             echo "No accounts to import"
             exit 0
