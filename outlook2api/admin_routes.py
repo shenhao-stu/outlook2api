@@ -1,18 +1,21 @@
-"""Admin API routes — account management, bulk import, stats."""
+"""Admin API routes — account management, bulk import, stats, mailbox."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from outlook2api.config import get_config
 from outlook2api.database import Account, get_db, get_stats
+from outlook2api.outlook_imap import fetch_messages_imap
 
 admin_router = APIRouter(prefix="/admin/api", tags=["admin"])
 
@@ -261,10 +264,36 @@ async def export_accounts(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Export all active accounts as email:password text."""
+    """Export all active accounts as email:password text file."""
     _verify_admin(request)
     rows = (await db.execute(
         select(Account).where(Account.is_active == True).order_by(Account.created_at.desc())
     )).scalars().all()
     lines = [f"{a.email}:{a.password}" for a in rows]
-    return {"count": len(lines), "data": "\n".join(lines)}
+    content = "\n".join(lines)
+    return PlainTextResponse(
+        content=content,
+        media_type="text/plain",
+        headers={"Content-Disposition": "attachment; filename=accounts_export.txt"},
+    )
+
+
+@admin_router.get("/accounts/{account_id}/messages")
+async def get_account_messages(
+    account_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    limit: int = 30,
+):
+    """Fetch messages from an account's mailbox via IMAP."""
+    _verify_admin(request)
+    account = (await db.execute(select(Account).where(Account.id == account_id))).scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        messages = await asyncio.to_thread(
+            fetch_messages_imap, account.email, account.password, "INBOX", limit
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"IMAP error: {e}")
+    return {"email": account.email, "messages": messages}
