@@ -21,14 +21,17 @@ def _verify_admin(request: Request) -> None:
     """Check admin password from cookie or Authorization header."""
     cfg = get_config()
     expected = cfg["admin_password"]
+    expected_hash = hashlib.sha256(expected.encode()).hexdigest()
     # Cookie auth
     token = request.cookies.get("admin_token", "")
-    if token and token == hashlib.sha256(expected.encode()).hexdigest():
+    if token and token == expected_hash:
         return
-    # Header auth
+    # Header auth: accept both raw password and hashed token
     auth = request.headers.get("Authorization", "")
-    if auth.startswith("Bearer ") and auth[7:].strip() == expected:
-        return
+    if auth.startswith("Bearer "):
+        bearer = auth[7:].strip()
+        if bearer == expected or bearer == expected_hash:
+            return
     raise HTTPException(status_code=401, detail="Unauthorized")
 
 
