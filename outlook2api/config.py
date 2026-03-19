@@ -13,4 +13,9 @@ def get_config() -> dict:
             os.path.join(os.path.dirname(__file__), "..", "data", "outlook_accounts.json"),
         ),
         "jwt_secret": os.environ.get("OUTLOOK2API_JWT_SECRET", "change-me-in-production"),
+        "admin_password": os.environ.get("ADMIN_PASSWORD", "admin"),
+        "database_url": os.environ.get(
+            "DATABASE_URL",
+            "sqlite+aiosqlite:///./data/outlook2api.db",
+        ),
     }

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outlook2API</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#faf9f7;--surface:#fff;--border:#e8e5e0;--text:#1a1a1a;--text-secondary:#6b6560;--accent:#c96442;--accent-hover:#b5573a;--green:#2d8a4e;--red:#d03e3e;--radius:8px;--shadow:0 1px 3px rgba(0,0,0,.06)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:720px;margin:0 auto;padding:48px 24px}
+.hero{text-align:center;margin-bottom:48px}
+.hero h1{font-size:28px;font-weight:600;margin-bottom:8px;letter-spacing:-.02em}
+.hero p{color:var(--text-secondary);font-size:15px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:40px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:box-shadow .15s}
+.card:hover{box-shadow:var(--shadow)}
+.card h3{font-size:14px;font-weight:500;color:var(--text-secondary);margin-bottom:4px}
+.card p{font-size:22px;font-weight:600}
+.links{display:flex;flex-direction:column;gap:12px}
+.link-card{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;transition:box-shadow .15s}
+.link-card:hover{box-shadow:var(--shadow);text-decoration:none}
+.link-card .label{font-size:15px;font-weight:500;color:var(--text)}
+.link-card .desc{font-size:13px;color:var(--text-secondary)}
+.link-card .arrow{color:var(--text-secondary);font-size:18px}
+.footer{margin-top:48px;text-align:center;color:var(--text-secondary);font-size:13px}
+@media(max-width:480px){.cards{grid-template-columns:1fr}.container{padding:32px 16px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="hero">
+    <h1>Outlook2API</h1>
+    <p>Mail.tm-compatible REST API for Outlook accounts</p>
+  </div>
+  <div class="cards" id="stats">
+    <div class="card"><h3>Total Accounts</h3><p id="stat-total">-</p></div>
+    <div class="card"><h3>Active</h3><p id="stat-active">-</p></div>
+  </div>
+  <div class="links">
+    <a href="/admin" class="link-card">
+      <div><div class="label">Admin Panel</div><div class="desc">Manage accounts, import, export</div></div>
+      <span class="arrow">&rarr;</span>
+    </a>
+    <a href="/docs" class="link-card">
+      <div><div class="label">API Documentation</div><div class="desc">Interactive Swagger UI</div></div>
+      <span class="arrow">&rarr;</span>
+    </a>
+    <a href="/redoc" class="link-card">
+      <div><div class="label">ReDoc</div><div class="desc">Alternative API reference</div></div>
+      <span class="arrow">&rarr;</span>
+    </a>
+  </div>
+  <div class="footer">Outlook2API &middot; <a href="https://github.com/shenhao-stu/outlook2api">GitHub</a></div>
+</div>
+<script>
+fetch('/admin/api/stats').then(r=>{if(r.ok)return r.json();throw r}).then(d=>{
+  document.getElementById('stat-total').textContent=d.total;
+  document.getElementById('stat-active').textContent=d.active;
+}).catch(()=>{});
+</script>
+</body>
+</html>

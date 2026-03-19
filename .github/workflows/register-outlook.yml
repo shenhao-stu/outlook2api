@@ -17,6 +17,8 @@ on:
 env:
   CAPTCHA_CLIENT_KEY: ${{ secrets.CAPTCHA_CLIENT_KEY }}
   PROXY_URL: ${{ secrets.PROXY_URL }}
+  OUTLOOK2API_URL: ${{ secrets.OUTLOOK2API_URL }}
+  ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
 
 jobs:
   register:
@@ -65,3 +67,36 @@ jobs:
           path: output/*Outlook.zip
           retention-days: 30
           if-no-files-found: warn
+
+      - name: Auto-import to admin panel
+        if: success()
+        run: |
+          if [ -z "$OUTLOOK2API_URL" ] || [ -z "$ADMIN_PASSWORD" ]; then
+            echo "OUTLOOK2API_URL or ADMIN_PASSWORD not set, skipping import"
+            exit 0
+          fi
+          # Extract accounts from staging files
+          ACCOUNTS="[]"
+          if [ -d "output/.staging_outlook" ]; then
+            ACCOUNTS=$(python -c "
+          import json, glob
+          accs = []
+          for f in glob.glob('output/.staging_outlook/outlook_*.json'):
+              try:
+                  d = json.load(open(f))
+                  accs.append(f\"{d['email']}:{d['password']}\")
+              except: pass
+          print(json.dumps(accs))
+          ")
+          fi
+          if [ "$ACCOUNTS" = "[]" ]; then
+            echo "No accounts to import"
+            exit 0
+          fi
+          echo "Importing accounts to $OUTLOOK2API_URL..."
+          curl -sf -X POST "${OUTLOOK2API_URL}/admin/api/accounts/bulk" \
+            -H "Authorization: Bearer ${ADMIN_PASSWORD}" \
+            -H "Content-Type: application/json" \
+            -d "{\"accounts\": $ACCOUNTS, \"source\": \"ci\"}" \
+            && echo "Import successful" \
+            || echo "Import failed (non-fatal)"

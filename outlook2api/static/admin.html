@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outlook2API Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#faf9f7;--surface:#fff;--border:#e8e5e0;
+  --text:#1a1a1a;--text-sec:#6b6560;--accent:#c96442;
+  --accent-hover:#b5573a;--accent-light:rgba(201,100,66,.08);
+  --success:#3a8a5c;--danger:#c44040;--radius:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.06);
+}
+html{font-family:'DM Sans',system-ui,-apple-system,sans-serif;font-size:15px;color:var(--text);background:var(--bg)}
+body{min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:.9rem}
+input,textarea,select{font-family:inherit;font-size:.9rem;border:1px solid var(--border);border-radius:var(--radius);padding:.55rem .75rem;background:var(--surface);color:var(--text);outline:none;transition:border .2s}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical}
+
+/* ---- Buttons ---- */
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1.1rem;border-radius:var(--radius);font-weight:500;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-hover)}
+.btn-outline{border:1px solid var(--border);color:var(--text)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#a83535}
+.btn-sm{padding:.35rem .7rem;font-size:.82rem}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ---- Badge ---- */
+.badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-size:.75rem;font-weight:600}
+.badge-active{background:rgba(58,138,92,.1);color:var(--success)}
+.badge-inactive{background:rgba(196,64,64,.08);color:var(--danger)}
+
+/* ---- Method badge ---- */
+.method{display:inline-block;padding:.1rem .45rem;border-radius:4px;font-size:.7rem;font-weight:700;font-family:monospace;min-width:52px;text-align:center}
+.method-get{background:#e8f5e9;color:#2e7d32}
+.method-post{background:#e3f2fd;color:#1565c0}
+.method-patch{background:#fff3e0;color:#e65100}
+.method-delete{background:#fce4ec;color:#c62828}
+
+/* ---- Toast ---- */
+#toast-container{position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem}
+.toast{padding:.7rem 1.1rem;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font-size:.85rem;animation:slideIn .25s ease;max-width:360px}
+.toast-error{border-left:3px solid var(--danger)}.toast-success{border-left:3px solid var(--success)}
+@keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+
+/* ---- Login ---- */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2.5rem;width:100%;max-width:380px;box-shadow:var(--shadow)}
+.login-card h1{font-size:1.4rem;margin-bottom:.3rem}
+.login-card p{color:var(--text-sec);font-size:.88rem;margin-bottom:1.5rem}
+.login-card label{display:block;font-weight:500;margin-bottom:.35rem;font-size:.85rem}
+.login-card input{width:100%;margin-bottom:1rem}
+.login-card .btn{width:100%;justify-content:center}
+
+/* ---- Layout ---- */
+#app{display:none;min-height:100vh}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:230px;background:var(--surface);border-right:1px solid var(--border);padding:1.2rem 0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .25s}
+.sidebar-brand{padding:0 1.2rem .8rem;font-size:1.1rem;font-weight:700;color:var(--accent);border-bottom:1px solid var(--border);margin-bottom:.5rem;padding-bottom:1rem}
+.sidebar-brand span{color:var(--text-sec);font-weight:400;font-size:.78rem;display:block;margin-top:.15rem}
+.nav-item{display:flex;align-items:center;gap:.6rem;padding:.6rem 1.2rem;color:var(--text-sec);font-weight:500;font-size:.9rem;transition:all .15s;cursor:pointer;border:none;width:100%;text-align:left;background:none}
+.nav-item:hover{color:var(--text);background:var(--accent-light)}
+.nav-item.active{color:var(--accent);background:var(--accent-light)}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding-top:.5rem;border-top:1px solid var(--border)}
+.main{margin-left:230px;flex:1;padding:2rem;max-width:960px;width:100%}
+.main h2{font-size:1.3rem;margin-bottom:1.2rem}
+
+/* ---- Mobile ---- */
+.menu-toggle{display:none;position:fixed;top:.8rem;left:.8rem;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.45rem .6rem}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:90}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .overlay.open{display:block}
+  .menu-toggle{display:block}
+  .main{margin-left:0;padding:1rem;padding-top:3.5rem}
+}
+
+/* ---- Cards ---- */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;box-shadow:var(--shadow)}
+.stat-card .label{font-size:.78rem;color:var(--text-sec);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.stat-card .value{font-size:1.8rem;font-weight:700;margin-top:.3rem}
+
+/* ---- Table ---- */
+.table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:.7rem .9rem;font-weight:600;color:var(--text-sec);font-size:.78rem;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--border);background:var(--bg)}
+td{padding:.65rem .9rem;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+.actions{display:flex;gap:.35rem;flex-wrap:wrap}
+
+/* ---- Toolbar ---- */
+.toolbar{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
+.toolbar input[type=text]{flex:1;min-width:180px}
+.toolbar select{min-width:120px}
+
+/* ---- Pagination ---- */
+.pagination{display:flex;align-items:center;gap:.8rem;justify-content:center;margin-top:1rem;font-size:.88rem;color:var(--text-sec)}
+
+/* ---- Modal ---- */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:12px;padding:1.8rem;width:100%;max-width:440px;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+.modal h3{margin-bottom:1rem;font-size:1.1rem}
+.modal label{display:block;font-weight:500;margin-bottom:.3rem;font-size:.85rem;margin-top:.8rem}
+.modal label:first-of-type{margin-top:0}
+.modal input{width:100%}
+.modal-actions{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.2rem}
+
+/* ---- Import ---- */
+.import-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.4rem;margin-bottom:1.2rem;box-shadow:var(--shadow)}
+.import-section h3{font-size:1rem;margin-bottom:.6rem}
+.import-section p{color:var(--text-sec);font-size:.85rem;margin-bottom:.8rem}
+.import-section textarea{width:100%;min-height:120px;margin-bottom:.8rem}
+
+/* ---- API Docs ---- */
+.endpoint-group{margin-bottom:2rem}
+.endpoint-group h3{font-size:1rem;margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:1px solid var(--border)}
+.endpoint{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:.6rem}
+.endpoint .path{font-family:monospace;font-size:.88rem;margin-left:.5rem}
+.endpoint .desc{color:var(--text-sec);font-size:.84rem;margin-top:.4rem}
+.endpoint pre{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.7rem;margin-top:.6rem;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+
+/* ---- Misc ---- */
+.loading{text-align:center;padding:2rem;color:var(--text-sec)}
+.empty{text-align:center;padding:2rem;color:var(--text-sec);font-size:.9rem}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+</style>
+</head>
+<body>
+
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+<div class="login-card">
+  <h1>Outlook2API</h1>
+  <p>Sign in to the admin panel</p>
+  <form id="login-form" autocomplete="on">
+    <label for="login-pw">Password</label>
+    <input id="login-pw" type="password" placeholder="Admin password" required aria-label="Admin password">
+    <button type="submit" class="btn btn-primary" id="login-btn">Sign in</button>
+  </form>
+</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+<button class="menu-toggle" id="menu-toggle" aria-label="Toggle menu">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+</button>
+<div class="overlay" id="overlay"></div>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Main navigation">
+  <div class="sidebar-brand">Outlook2API<span>Admin Panel</span></div>
+  <button class="nav-item active" data-tab="dashboard" aria-label="Dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </button>
+  <button class="nav-item" data-tab="accounts" aria-label="Accounts">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    Accounts
+  </button>
+  <button class="nav-item" data-tab="import" aria-label="Import">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Import
+  </button>
+  <button class="nav-item" data-tab="docs" aria-label="API Docs">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    API Docs
+  </button>
+  <div class="sidebar-footer">
+    <button class="nav-item" id="logout-btn" aria-label="Logout">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </button>
+  </div>
+</nav>
+
+<main class="main">
+<!-- Dashboard -->
+<section id="tab-dashboard" class="tab-content">
+  <h2>Dashboard</h2>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="label">Total Accounts</div><div class="value" id="stat-total">--</div></div>
+    <div class="stat-card"><div class="label">Active</div><div class="value" id="stat-active">--</div></div>
+    <div class="stat-card"><div class="label">Inactive</div><div class="value" id="stat-inactive">--</div></div>
+    <div class="stat-card"><div class="label">Last 7 Days</div><div class="value" id="stat-recent">--</div></div>
+  </div>
+  <button class="btn btn-outline" id="export-btn" aria-label="Export accounts">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export Accounts
+  </button>
+</section>
+
+<!-- Accounts -->
+<section id="tab-accounts" class="tab-content" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:1.2rem">
+    <h2 style="margin-bottom:0">Accounts</h2>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-primary btn-sm" id="add-account-btn" aria-label="Add account">+ Add</button>
+      <button class="btn btn-danger btn-sm" id="delete-all-btn" aria-label="Delete all accounts">Delete All</button>
+    </div>
+  </div>
+  <div class="toolbar">
+    <input type="text" id="search-input" placeholder="Search by email..." aria-label="Search accounts">
+    <select id="active-filter" aria-label="Filter by status">
+      <option value="">All</option>
+      <option value="true">Active</option>
+      <option value="false">Inactive</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Email</th><th>Status</th><th>Source</th><th>Created</th><th>Actions</th></tr></thead>
+      <tbody id="accounts-tbody"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
+    </table>
+  </div>
+  <div class="pagination">
+    <button class="btn btn-outline btn-sm" id="prev-btn" disabled aria-label="Previous page">Prev</button>
+    <span id="page-info">Page 1</span>
+    <button class="btn btn-outline btn-sm" id="next-btn" disabled aria-label="Next page">Next</button>
+  </div>
+</section>
+
+<!-- Import -->
+<section id="tab-import" class="tab-content" style="display:none">
+  <h2>Import Accounts</h2>
+  <div class="import-section">
+    <h3>Text Import</h3>
+    <p>Enter accounts, one per line in <code>email:password</code> format.</p>
+    <textarea id="bulk-text" placeholder="user1@outlook.com:password1&#10;user2@outlook.com:password2" aria-label="Bulk account text"></textarea>
+    <button class="btn btn-primary" id="bulk-submit-btn">Import Accounts</button>
+  </div>
+  <div class="import-section">
+    <h3>File Upload</h3>
+    <p>Upload a <code>.txt</code> file with one <code>email:password</code> per line.</p>
+    <input type="file" id="file-upload" accept=".txt" aria-label="Upload account file">
+    <div style="margin-top:.6rem"><button class="btn btn-primary" id="file-submit-btn">Upload File</button></div>
+  </div>
+  <div class="import-section">
+    <h3>CI Import</h3>
+    <p>Use this endpoint in your GitHub Actions workflow to auto-import accounts.</p>
+    <pre>POST /admin/api/accounts/bulk
+Content-Type: application/json
+Authorization: Bearer ADMIN_PASSWORD
+
+{
+  "accounts": ["user@outlook.com:pass"],
+  "source": "ci"
+}</pre>
+    <p style="margin-top:.6rem;font-weight:500">curl example:</p>
+    <pre>curl -X POST https://your-domain/admin/api/accounts/bulk \
+  -H "Authorization: Bearer ADMIN_PASSWORD" \
+  -H "Content-Type: application/json" \
+  -d '{"accounts": ["user@outlook.com:pass"], "source": "ci"}'</pre>
+  </div>
+</section>
+
+<!-- API Docs -->
+<section id="tab-docs" class="tab-content" style="display:none">
+  <h2>API Documentation</h2>
+  <div class="endpoint-group">
+    <h3>Mail API</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span><span class="path">/domains</span>
+      <div class="desc">List supported email domains</div>
+      <pre>curl https://your-domain/domains</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-post">POST</span><span class="path">/accounts</span>
+      <div class="desc">Register account (validates via IMAP)</div>
+      <pre>curl -X POST https://your-domain/accounts \
+  -H "Content-Type: application/json" \
+  -d '{"address": "user@outlook.com", "password": "pass"}'</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-post">POST</span><span class="path">/token</span>
+      <div class="desc">Get JWT token</div>
+      <pre>curl -X POST https://your-domain/token \
+  -H "Content-Type: application/json" \
+  -d '{"address": "user@outlook.com", "password": "pass"}'</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span><span class="path">/me</span>
+      <div class="desc">Get current user info (requires Bearer token)</div>
+      <pre>curl https://your-domain/me \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span><span class="path">/messages</span>
+      <div class="desc">List messages (requires Bearer token, ?page=1)</div>
+      <pre>curl "https://your-domain/messages?page=1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span><span class="path">/messages/{id}</span>
+      <div class="desc">Get a specific message (requires Bearer token)</div>
+      <pre>curl https://your-domain/messages/123 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span><span class="path">/messages/{id}/code</span>
+      <div class="desc">Extract verification code from message (requires Bearer token)</div>
+      <pre>curl https://your-domain/messages/123/code \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-delete">DELETE</span><span class="path">/accounts/me</span>
+      <div class="desc">Delete current account (requires Bearer token)</div>
+      <pre>curl -X DELETE https://your-domain/accounts/me \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"</pre>
+    </div>
+  </div>
+  <div class="endpoint-group">
+    <h3>Admin API</h3>
+    <p style="color:var(--text-sec);font-size:.84rem;margin-bottom:.8rem;margin-top:-.4rem">All endpoints require Bearer token or admin_token cookie.</p>
+    <div class="endpoint">
+      <span class="method method-post">POST</span><span class="path">/admin/api/login</span>
+      <div class="desc">Authenticate and receive admin token</div>
+      <pre>curl -X POST https://your-domain/admin/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"password": "your_password"}'</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span><span class="path">/admin/api/stats</span>
+      <div class="desc">Get account statistics</div>
+      <pre>curl https://your-domain/admin/api/stats \
+  -H "Authorization: Bearer ADMIN_TOKEN"</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span><span class="path">/admin/api/accounts</span>
+      <div class="desc">List accounts with pagination and filters (?page=&amp;search=&amp;active=)</div>
+      <pre>curl "https://your-domain/admin/api/accounts?page=1&amp;search=user&amp;active=true" \
+  -H "Authorization: Bearer ADMIN_TOKEN"</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-post">POST</span><span class="path">/admin/api/accounts</span>
+      <div class="desc">Add a single account</div>
+      <pre>curl -X POST https://your-domain/admin/api/accounts \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@outlook.com", "password": "pass"}'</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-post">POST</span><span class="path">/admin/api/accounts/bulk</span>
+      <div class="desc">Bulk import accounts</div>
+      <pre>curl -X POST https://your-domain/admin/api/accounts/bulk \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"accounts": ["user@outlook.com:pass"], "source": "manual"}'</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-post">POST</span><span class="path">/admin/api/accounts/upload</span>
+      <div class="desc">Upload accounts file (multipart form)</div>
+      <pre>curl -X POST https://your-domain/admin/api/accounts/upload \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -F "file=@accounts.txt"</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-patch">PATCH</span><span class="path">/admin/api/accounts/{id}</span>
+      <div class="desc">Update account (toggle active status)</div>
+      <pre>curl -X PATCH https://your-domain/admin/api/accounts/123 \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"is_active": true}'</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-delete">DELETE</span><span class="path">/admin/api/accounts/{id}</span>
+      <div class="desc">Delete a specific account</div>
+      <pre>curl -X DELETE https://your-domain/admin/api/accounts/123 \
+  -H "Authorization: Bearer ADMIN_TOKEN"</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-delete">DELETE</span><span class="path">/admin/api/accounts</span>
+      <div class="desc">Delete all accounts</div>
+      <pre>curl -X DELETE https://your-domain/admin/api/accounts \
+  -H "Authorization: Bearer ADMIN_TOKEN"</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span><span class="path">/admin/api/accounts/{id}/password</span>
+      <div class="desc">Retrieve account password</div>
+      <pre>curl https://your-domain/admin/api/accounts/123/password \
+  -H "Authorization: Bearer ADMIN_TOKEN"</pre>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span><span class="path">/admin/api/export</span>
+      <div class="desc">Export all accounts as text file</div>
+      <pre>curl https://your-domain/admin/api/export \
+  -H "Authorization: Bearer ADMIN_TOKEN" -o accounts.txt</pre>
+    </div>
+  </div>
+</section>
+</main>
+</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ---- Helpers ----
+function getCookie(n){const m=document.cookie.match(new RegExp('(?:^|; )'+n+'=([^;]*)'));return m?decodeURIComponent(m[1]):null}
+function setCookie(n,v,d){let s=n+'='+encodeURIComponent(v)+';path=/;SameSite=Lax';if(d)s+=';max-age='+d*86400;document.cookie=s}
+function delCookie(n){document.cookie=n+'=;path=/;max-age=0'}
+
+function getToken(){return getCookie('admin_token')||''}
+
+function toast(msg,type){
+  const c=document.getElementById('toast-container');
+  const d=document.createElement('div');
+  d.className='toast toast-'+(type||'success');
+  d.textContent=msg;
+  c.appendChild(d);
+  setTimeout(()=>d.remove(),4000);
+}
+
+async function api(path,opts={}){
+  const headers=opts.headers||{};
+  const tk=getToken();
+  if(tk)headers['Authorization']='Bearer '+tk;
+  if(opts.body&&typeof opts.body==='object'&&!(opts.body instanceof FormData)){
+    headers['Content-Type']='application/json';
+    opts.body=JSON.stringify(opts.body);
+  }
+  opts.headers=headers;
+  const r=await fetch(path,opts);
+  if(!r.ok){
+    let msg='Request failed ('+r.status+')';
+    try{const j=await r.json();msg=j.detail||j.message||msg}catch(e){}
+    throw new Error(msg);
+  }
+  const ct=r.headers.get('content-type')||'';
+  if(ct.includes('json'))return r.json();
+  return r;
+}
+
+// ---- State ----
+let currentTab='dashboard';
+let accountsPage=1;
+let accountsTotal=0;
+const PAGE_SIZE=20;
+
+// ---- DOM refs ----
+const $=id=>document.getElementById(id);
+
+// ---- Auth check ----
+function checkAuth(){
+  if(getToken()){
+    $('login-screen').style.display='none';
+    $('app').style.display='block';
+    loadTab(currentTab);
+  } else {
+    $('login-screen').style.display='flex';
+    $('app').style.display='none';
+  }
+}
+
+// ---- Login ----
+$('login-form').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const btn=$('login-btn');
+  btn.disabled=true;btn.textContent='Signing in...';
+  try{
+    const data=await api('/admin/api/login',{method:'POST',body:{password:$('login-pw').value}});
+    setCookie('admin_token',data.token||data.access_token,7);
+    toast('Signed in');
+    checkAuth();
+  }catch(err){toast(err.message,'error')}
+  finally{btn.disabled=false;btn.textContent='Sign in'}
+});
+
+// ---- Logout ----
+$('logout-btn').addEventListener('click',()=>{delCookie('admin_token');checkAuth()});
+
+// ---- Sidebar nav ----
+document.querySelectorAll('.nav-item[data-tab]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-item[data-tab]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab=btn.dataset.tab;
+    loadTab(currentTab);
+    // close mobile sidebar
+    $('sidebar').classList.remove('open');
+    $('overlay').classList.remove('open');
+  });
+});
+
+// ---- Mobile menu ----
+$('menu-toggle').addEventListener('click',()=>{$('sidebar').classList.toggle('open');$('overlay').classList.toggle('open')});
+$('overlay').addEventListener('click',()=>{$('sidebar').classList.remove('open');$('overlay').classList.remove('open')});
+
+// ---- Tab loading ----
+function loadTab(tab){
+  document.querySelectorAll('.tab-content').forEach(s=>s.style.display='none');
+  const el=$('tab-'+tab);
+  if(el)el.style.display='block';
+  if(tab==='dashboard')loadDashboard();
+  if(tab==='accounts'){accountsPage=1;loadAccounts()}
+}
+
+// ---- Dashboard ----
+async function loadDashboard(){
+  try{
+    const s=await api('/admin/api/stats');
+    $('stat-total').textContent=s.total??'--';
+    $('stat-active').textContent=s.active??'--';
+    $('stat-inactive').textContent=s.inactive??'--';
+    $('stat-recent').textContent=s.recent_7d??s.recent??'--';
+  }catch(err){toast(err.message,'error')}
+}
+
+$('export-btn').addEventListener('click',async()=>{
+  try{
+    const r=await api('/admin/api/export');
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='accounts_export.txt';a.click();
+    URL.revokeObjectURL(url);
+    toast('Export downloaded');
+  }catch(err){toast(err.message,'error')}
+});
+
+// ---- Accounts ----
+let searchTimer=null;
+$('search-input').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{accountsPage=1;loadAccounts()},350)});
+$('active-filter').addEventListener('change',()=>{accountsPage=1;loadAccounts()});
+$('prev-btn').addEventListener('click',()=>{if(accountsPage>1){accountsPage--;loadAccounts()}});
+$('next-btn').addEventListener('click',()=>{accountsPage++;loadAccounts()});
+
+async function loadAccounts(){
+  const tbody=$('accounts-tbody');
+  tbody.innerHTML='<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  try{
+    const search=$('search-input').value;
+    const active=$('active-filter').value;
+    let url='/admin/api/accounts?page='+accountsPage;
+    if(search)url+='&search='+encodeURIComponent(search);
+    if(active)url+='&active='+active;
+    const data=await api(url);
+    const accounts=data.accounts||data.items||data||[];
+    accountsTotal=data.total||accounts.length;
+    const totalPages=Math.max(1,Math.ceil(accountsTotal/PAGE_SIZE));
+    $('page-info').textContent='Page '+accountsPage+' of '+totalPages;
+    $('prev-btn').disabled=accountsPage<=1;
+    $('next-btn').disabled=accountsPage>=totalPages;
+    if(!accounts.length){
+      tbody.innerHTML='<tr><td colspan="5" class="empty">No accounts found</td></tr>';
+      return;
+    }
+    tbody.innerHTML=accounts.map(a=>`<tr>
+      <td>${esc(a.email||a.address||'')}</td>
+      <td><span class="badge ${a.is_active!==false?'badge-active':'badge-inactive'}">${a.is_active!==false?'Active':'Inactive'}</span></td>
+      <td>${esc(a.source||'--')}</td>
+      <td>${fmtDate(a.created_at||a.created||'')}</td>
+      <td class="actions">
+        <button class="btn btn-outline btn-sm" onclick="window._toggleAccount(${a.id},${!a.is_active})" aria-label="Toggle status">${a.is_active!==false?'Deactivate':'Activate'}</button>
+        <button class="btn btn-outline btn-sm" onclick="window._showPassword(${a.id})" aria-label="Show password">Password</button>
+        <button class="btn btn-danger btn-sm" onclick="window._deleteAccount(${a.id})" aria-label="Delete account">Delete</button>
+      </td>
+    </tr>`).join('');
+  }catch(err){
+    tbody.innerHTML='<tr><td colspan="5" class="empty">Error: '+esc(err.message)+'</td></tr>';
+  }
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function fmtDate(s){if(!s)return'--';try{return new Date(s).toLocaleDateString()}catch(e){return s}}
+
+window._toggleAccount=async(id,active)=>{
+  try{await api('/admin/api/accounts/'+id,{method:'PATCH',body:{is_active:active}});toast('Account updated');loadAccounts()}
+  catch(err){toast(err.message,'error')}
+};
+window._showPassword=async(id)=>{
+  $('pw-display').textContent='Loading...';
+  $('pw-modal').classList.add('open');
+  try{const d=await api('/admin/api/accounts/'+id+'/password');$('pw-display').textContent=d.password||d.pw||JSON.stringify(d)}
+  catch(err){$('pw-display').textContent='Error: '+err.message}
+};
+window._deleteAccount=async(id)=>{
+  if(!confirm('Delete this account?'))return;
+  try{await api('/admin/api/accounts/'+id,{method:'DELETE'});toast('Account deleted');loadAccounts()}
+  catch(err){toast(err.message,'error')}
+};
+
+$('pw-close-btn').addEventListener('click',()=>$('pw-modal').classList.remove('open'));
+$('pw-modal').addEventListener('click',e=>{if(e.target===$('pw-modal'))$('pw-modal').classList.remove('open')});
+
+// ---- Add account ----
+$('add-account-btn').addEventListener('click',()=>{$('add-email').value='';$('add-password').value='';$('add-modal').classList.add('open');$('add-email').focus()});
+$('add-cancel-btn').addEventListener('click',()=>$('add-modal').classList.remove('open'));
+$('add-modal').addEventListener('click',e=>{if(e.target===$('add-modal'))$('add-modal').classList.remove('open')});
+$('add-confirm-btn').addEventListener('click',async()=>{
+  const email=$('add-email').value.trim();
+  const pw=$('add-password').value;
+  if(!email||!pw){toast('Fill in all fields','error');return}
+  const btn=$('add-confirm-btn');btn.disabled=true;btn.textContent='Adding...';
+  try{
+    await api('/admin/api/accounts',{method:'POST',body:{email,password:pw}});
+    toast('Account added');$('add-modal').classList.remove('open');loadAccounts();
+  }catch(err){toast(err.message,'error')}
+  finally{btn.disabled=false;btn.textContent='Add Account'}
+});
+
+// ---- Delete all ----
+$('delete-all-btn').addEventListener('click',async()=>{
+  if(!confirm('Delete ALL accounts? This cannot be undone.'))return;
+  if(!confirm('Are you really sure?'))return;
+  try{await api('/admin/api/accounts',{method:'DELETE'});toast('All accounts deleted');loadAccounts()}
+  catch(err){toast(err.message,'error')}
+});
+
+// ---- Import: bulk text ----
+$('bulk-submit-btn').addEventListener('click',async()=>{
+  const lines=$('bulk-text').value.trim().split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length){toast('Enter at least one account','error');return}
+  const btn=$('bulk-submit-btn');btn.disabled=true;btn.textContent='Importing...';
+  try{
+    const d=await api('/admin/api/accounts/bulk',{method:'POST',body:{accounts:lines,source:'manual'}});
+    toast('Imported '+(d.imported||d.count||lines.length)+' accounts');
+    $('bulk-text').value='';
+  }catch(err){toast(err.message,'error')}
+  finally{btn.disabled=false;btn.textContent='Import Accounts'}
+});
+
+// ---- Import: file upload ----
+$('file-submit-btn').addEventListener('click',async()=>{
+  const file=$('file-upload').files[0];
+  if(!file){toast('Select a file first','error');return}
+  const btn=$('file-submit-btn');btn.disabled=true;btn.textContent='Uploading...';
+  try{
+    const fd=new FormData();fd.append('file',file);
+    const d=await api('/admin/api/accounts/upload',{method:'POST',body:fd});
+    toast('Uploaded '+(d.imported||d.count||'')+ ' accounts');
+    $('file-upload').value='';
+  }catch(err){toast(err.message,'error')}
+  finally{btn.disabled=false;btn.textContent='Upload File'}
+});
+
+// ---- Keyboard: Escape closes modals ----
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    $('add-modal').classList.remove('open');
+    $('pw-modal').classList.remove('open');
+  }
+});
+
+// ---- Init ----
+checkAuth();
+})();
+</script>
+
+<!-- Add Account Modal -->
+<div class="modal-overlay" id="add-modal" aria-modal="true" role="dialog" aria-label="Add account">
+<div class="modal">
+  <h3>Add Account</h3>
+  <label for="add-email">Email</label>
+  <input id="add-email" type="email" placeholder="user@outlook.com" required>
+  <label for="add-password">Password</label>
+  <input id="add-password" type="text" placeholder="Password" required>
+  <div class="modal-actions">
+    <button class="btn btn-outline" id="add-cancel-btn">Cancel</button>
+    <button class="btn btn-primary" id="add-confirm-btn">Add Account</button>
+  </div>
+</div>
+</div>
+
+<!-- Password Modal -->
+<div class="modal-overlay" id="pw-modal" aria-modal="true" role="dialog" aria-label="Account password">
+<div class="modal">
+  <h3>Account Password</h3>
+  <p id="pw-display" style="font-family:monospace;background:var(--bg);padding:.7rem;border-radius:6px;margin-top:.5rem;word-break:break-all">Loading...</p>
+  <div class="modal-actions"><button class="btn btn-outline" id="pw-close-btn">Close</button></div>
+</div>
+</div>
+</body>
+</html>
