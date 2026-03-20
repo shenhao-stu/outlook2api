@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from outlook2api.config import get_config
-from outlook2api.database import init_db
+from outlook2api.database import init_db, _get_db_url
 from outlook2api.routes import router
 from outlook2api.admin_routes import admin_router
 
@@ -37,6 +37,13 @@ def create_app() -> FastAPI:
         if html_file.exists():
             return HTMLResponse(html_file.read_text(encoding="utf-8"))
         return HTMLResponse("<h1>Outlook2API</h1><p><a href='/docs'>API Docs</a> | <a href='/admin'>Admin</a></p>")
+
+    @app.get("/health")
+    async def health():
+        url = _get_db_url()
+        db_type = "postgresql" if "postgresql" in url else "sqlite"
+        host = url.split("@")[1].split("/")[0] if "@" in url else "local"
+        return {"status": "ok", "db_type": db_type, "db_host": host}
 
     @app.get("/admin", response_class=HTMLResponse)
     @app.get("/admin/{path:path}", response_class=HTMLResponse)
