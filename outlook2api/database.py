@@ -78,12 +78,13 @@ async def init_db() -> None:
     connect_args: dict = {"check_same_thread": False} if is_sqlite else {}
     if not is_sqlite and _needs_ssl():
         connect_args["ssl"] = _ssl.create_default_context()
-    _engine = create_async_engine(url, echo=False, connect_args=connect_args)
+    # Disable prepared statement cache to avoid stale plan errors after schema changes
+    engine_kwargs: dict = {"echo": False, "connect_args": connect_args}
+    if not is_sqlite:
+        engine_kwargs["pool_pre_ping"] = True
+    _engine = create_async_engine(url, **engine_kwargs)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     async with _engine.begin() as conn:
-        # Drop and recreate to handle column type changes (safe when DB is empty)
-        if not is_sqlite:
-            await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
 
