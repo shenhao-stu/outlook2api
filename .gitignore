@@ -13,3 +13,4 @@ output/
 .staging_outlook/
 *.crx
 .claude/
+refs/

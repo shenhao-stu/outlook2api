@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from outlook2api.config import get_config
 from outlook2api.database import Account, get_db, get_stats
-from outlook2api.outlook_imap import fetch_messages_imap
+from outlook2api.outlook_imap import fetch_messages_imap, list_folders, delete_messages_imap
 from outlook2api.outlook_smtp import send_email
 
 admin_router = APIRouter(prefix="/admin/api", tags=["admin"])
@@ -61,6 +61,11 @@ class SendEmailRequest(BaseModel):
     cc: str = ""
     in_reply_to: str = ""
     references: str = ""
+
+
+class DeleteMessagesRequest(BaseModel):
+    message_ids: list[str]
+    folder: str = "INBOX"
 
 
 @admin_router.post("/login")
@@ -302,6 +307,8 @@ async def get_account_messages(
     request: Request,
     db: AsyncSession = Depends(get_db),
     limit: int = 30,
+    folder: str = "INBOX",
+    search: str = "",
 ):
     """Fetch messages from an account's mailbox via IMAP."""
     _verify_admin(request)
@@ -310,11 +317,52 @@ async def get_account_messages(
         raise HTTPException(status_code=404, detail="Account not found")
     try:
         messages = await asyncio.to_thread(
-            fetch_messages_imap, account.email, account.password, "INBOX", limit
+            fetch_messages_imap, account.email, account.password, folder, limit, search=search
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"IMAP error: {e}")
+    return {"email": account.email, "messages": messages, "folder": folder}
+
+
+@admin_router.get("/accounts/{account_id}/folders")
+async def get_account_folders(
+    account_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """List IMAP folders for an account."""
+    _verify_admin(request)
+    account = (await db.execute(select(Account).where(Account.id == account_id))).scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        folders = await asyncio.to_thread(list_folders, account.email, account.password)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"IMAP error: {e}")
+    return {"email": account.email, "folders": folders}
+
+
+@admin_router.post("/accounts/{account_id}/messages/delete")
+async def delete_account_messages(
+    account_id: str,
+    body: DeleteMessagesRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete messages from an account's mailbox."""
+    _verify_admin(request)
+    account = (await db.execute(select(Account).where(Account.id == account_id))).scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        result = await asyncio.to_thread(
+            delete_messages_imap, account.email, account.password, body.message_ids, body.folder
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"IMAP error: {e}")
-    return {"email": account.email, "messages": messages}
+    return result
 
 
 @admin_router.post("/accounts/{account_id}/send")
