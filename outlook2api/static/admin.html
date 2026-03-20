@@ -594,7 +594,7 @@ function loadAccts(){
   });
 }
 
-var W=window;
+var W=window;window.W=W;
 W._tog=function(id,v){
   api('/admin/api/accounts/'+id,{method:'PATCH',body:{is_active:v}})
   .then(function(){toast('Account updated');loadAccts()}).catch(function(e){toast(e.message,1)});
