@@ -145,14 +145,19 @@ async def create_account(
     password = body.get("password", "").strip()
     if not email or not password:
         raise HTTPException(status_code=400, detail="Email and password required")
-    existing = (await db.execute(select(Account).where(Account.email == email))).scalar_one_or_none()
-    if existing:
-        raise HTTPException(status_code=409, detail="Account already exists")
-    account = Account(email=email, password=password, source="manual")
-    db.add(account)
-    await db.commit()
-    await db.refresh(account)
-    return account.to_dict()
+    try:
+        existing = (await db.execute(select(Account).where(Account.email == email))).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=409, detail="Account already exists")
+        account = Account(email=email, password=password, source="manual")
+        db.add(account)
+        await db.commit()
+        await db.refresh(account)
+        return account.to_dict()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
 
 
 @admin_router.post("/accounts/bulk")
