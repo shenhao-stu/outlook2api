@@ -24,8 +24,8 @@ class Account(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    last_used = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_used = Column(DateTime(timezone=True), nullable=True)
     usage_count = Column(Integer, default=0)
     source = Column(String, default="manual")  # manual, ci, import
     notes = Column(Text, default="")
@@ -81,6 +81,9 @@ async def init_db() -> None:
     _engine = create_async_engine(url, echo=False, connect_args=connect_args)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     async with _engine.begin() as conn:
+        # Drop and recreate to handle column type changes (safe when DB is empty)
+        if not is_sqlite:
+            await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
 
