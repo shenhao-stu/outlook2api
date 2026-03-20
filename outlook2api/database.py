@@ -83,6 +83,7 @@ async def init_db() -> None:
     connect_args: dict = {"check_same_thread": False} if is_sqlite else {}
     if not is_sqlite and _needs_ssl():
         connect_args["ssl"] = _ssl.create_default_context()
+        connect_args["statement_cache_size"] = 0  # Avoid stale plan errors after schema changes
     # Disable prepared statement cache to avoid stale plan errors after schema changes
     engine_kwargs: dict = {"echo": False, "connect_args": connect_args}
     if not is_sqlite:
