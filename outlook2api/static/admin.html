@@ -69,7 +69,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:
 .login-box .btn{width:100%;justify-content:center;padding:.65rem}
 
 /* ---- Layout ---- */
-#app{display:none;min-height:100vh}
+#app{min-height:100vh}
 .lay{display:flex;min-height:100vh}
 .side{width:240px;background:var(--surface);border-right:1px solid var(--border);padding:1.2rem 0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .25s}
 .side-brand{padding:0 1.4rem;font-size:1.15rem;font-weight:700;color:var(--brand);border-bottom:1px solid var(--border);margin-bottom:.6rem;padding-bottom:1.1rem;display:flex;align-items:center;gap:.5rem}
@@ -211,7 +211,7 @@ pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;paddin
 </div>
 
 <!-- ===== APP ===== -->
-<div id="app">
+<div id="app" style="display:none">
 <button class="menu-btn" id="menuBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
 <div class="ov" id="ov"></div>
 <div class="lay">
@@ -429,7 +429,7 @@ function tk(){return getCk('admin_token')||''}
 function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function fmtD(s){if(!s)return'--';try{return new Date(s).toLocaleDateString()}catch(e){return s}}
 
-function show(id,disp){var el=typeof id==='string'?$(id):id;if(el)el.style.display=disp||''}
+function show(id,disp){var el=typeof id==='string'?$(id):id;if(el)el.style.display=disp||'block'}
 function hide(id){var el=typeof id==='string'?$(id):id;if(el)el.style.display='none'}
 
 function toast(msg,err){
@@ -487,7 +487,7 @@ var curFolder='INBOX';
 
 /* ========== AUTH ========== */
 function checkAuth(){
-  if(tk()){hide('login');show('app');loadTab(curTab)}
+  if(tk()){hide('login');show('app','block');loadTab(curTab)}
   else{show('login','flex');hide('app')}
 }
 
@@ -527,7 +527,7 @@ $('ov').onclick=function(){$('side').classList.remove('open');$('ov').classList.
 var tabs=['dash','acct','imp','mail','docs'];
 function loadTab(t){
   tabs.forEach(function(id){hide('t-'+id)});
-  show('t-'+t);
+  show('t-'+t,'block');
   if(t==='dash')loadDash();
   if(t==='acct'){page=1;loadAccts()}
   if(t==='mail')loadMbAccts();
