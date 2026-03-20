@@ -4,61 +4,169 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Outlook2API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#faf9f7;--surface:#fff;--border:#e8e5e0;--text:#1a1a1a;--text-secondary:#6b6560;--accent:#c96442;--accent-hover:#b5573a;--green:#2d8a4e;--red:#d03e3e;--radius:8px;--shadow:0 1px 3px rgba(0,0,0,.06)}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}
-a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
-.container{max-width:720px;margin:0 auto;padding:48px 24px}
-.hero{text-align:center;margin-bottom:48px}
-.hero h1{font-size:28px;font-weight:600;margin-bottom:8px;letter-spacing:-.02em}
-.hero p{color:var(--text-secondary);font-size:15px}
-.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:40px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:box-shadow .15s}
-.card:hover{box-shadow:var(--shadow)}
-.card h3{font-size:14px;font-weight:500;color:var(--text-secondary);margin-bottom:4px}
-.card p{font-size:22px;font-weight:600}
-.links{display:flex;flex-direction:column;gap:12px}
-.link-card{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;transition:box-shadow .15s}
-.link-card:hover{box-shadow:var(--shadow);text-decoration:none}
-.link-card .label{font-size:15px;font-weight:500;color:var(--text)}
-.link-card .desc{font-size:13px;color:var(--text-secondary)}
-.link-card .arrow{color:var(--text-secondary);font-size:18px}
-.footer{margin-top:48px;text-align:center;color:var(--text-secondary);font-size:13px}
-@media(max-width:480px){.cards{grid-template-columns:1fr}.container{padding:32px 16px}}
+body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;min-height:100vh;color:#1a1a1a;line-height:1.6;
+  background:linear-gradient(135deg,#fef7f0 0%,#f8f7f4 40%,#f0f4f8 100%)}
+a{text-decoration:none;transition:color .15s}
+
+.page{max-width:820px;margin:0 auto;padding:64px 24px 48px}
+
+/* Hero */
+.hero{text-align:center;margin-bottom:52px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;
+  background:linear-gradient(135deg,rgba(201,100,66,.1),rgba(201,100,66,.05));
+  border:1px solid rgba(201,100,66,.15);border-radius:99px;font-size:12px;font-weight:600;
+  color:#c96442;margin-bottom:24px;letter-spacing:.02em}
+.pill svg{width:14px;height:14px}
+h1{font-size:36px;font-weight:700;letter-spacing:-.03em;margin-bottom:10px;
+  background:linear-gradient(135deg,#c96442,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{color:#6b6560;font-size:16px;max-width:500px;margin:0 auto}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:40px}
+.stat{background:#fff;border:1px solid #e8e5e0;border-radius:12px;padding:22px 26px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.stat:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.stat:first-child::before{background:linear-gradient(90deg,#c96442,#e8956d)}
+.stat:last-child::before{background:linear-gradient(90deg,#2d8a4e,#5cb85c)}
+.stat-l{font-size:11px;font-weight:600;color:#9b958e;text-transform:uppercase;letter-spacing:.08em}
+.stat-v{font-size:32px;font-weight:700;margin-top:6px;letter-spacing:-.02em}
+.stat:last-child .stat-v{color:#2d8a4e}
+
+/* Features */
+.features{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:40px}
+.feat{background:#fff;border:1px solid #e8e5e0;border-radius:12px;padding:22px;transition:transform .2s,box-shadow .2s}
+.feat:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+.feat-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.feat-ico svg{width:20px;height:20px}
+.fi-mail{background:linear-gradient(135deg,#dbeafe,#eff6ff);color:#2563eb}
+.fi-admin{background:linear-gradient(135deg,#fce7d6,#fef3ec);color:#c96442}
+.fi-code{background:linear-gradient(135deg,#d1fae5,#ecfdf5);color:#059669}
+.fi-ci{background:linear-gradient(135deg,#ede9fe,#f5f3ff);color:#7c3aed}
+.feat h3{font-size:14px;font-weight:600;margin-bottom:4px}
+.feat p{font-size:13px;color:#6b6560;line-height:1.5}
+.feat code{background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:12px}
+
+/* Links */
+.links{display:flex;flex-direction:column;gap:12px;margin-bottom:40px}
+.link{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #e8e5e0;border-radius:12px;padding:18px 22px;transition:all .2s;color:inherit}
+.link:hover{box-shadow:0 8px 24px rgba(0,0,0,.06);border-color:#c96442;transform:translateY(-1px)}
+.link-ico{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.link-ico svg{width:22px;height:22px}
+.li-admin{background:linear-gradient(135deg,#fce7d6,#fef3ec);color:#c96442}
+.li-docs{background:linear-gradient(135deg,#dbeafe,#eff6ff);color:#2563eb}
+.link-txt{flex:1}
+.link-t{font-size:15px;font-weight:600}
+.link-d{font-size:13px;color:#6b6560;margin-top:1px}
+.link-arr{color:#9b958e;font-size:20px;transition:transform .2s}
+.link:hover .link-arr{transform:translateX(4px);color:#c96442}
+
+/* API Quick Ref */
+.api-ref{background:#fff;border:1px solid #e8e5e0;border-radius:12px;overflow:hidden;margin-bottom:40px}
+.api-hdr{padding:16px 22px;border-bottom:1px solid #e8e5e0;display:flex;align-items:center;justify-content:space-between}
+.api-hdr h3{font-size:14px;font-weight:600}.api-hdr span{font-size:12px;color:#9b958e}
+.ep{display:flex;align-items:center;gap:14px;padding:10px 22px;border-bottom:1px solid #f3f0ec;font-size:13px}
+.ep:last-child{border-bottom:none}
+.ep:hover{background:#faf9f7}
+.m{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;font-family:monospace;min-width:48px;text-align:center}
+.m-g{background:#dcfce7;color:#16a34a}.m-p{background:#dbeafe;color:#2563eb}.m-d{background:#fee2e2;color:#dc2626}
+.ep-p{font-family:monospace;color:#1a1a1a}
+.ep-d{color:#9b958e;margin-left:auto;font-size:12px}
+
+/* Footer */
+.foot{text-align:center;padding-top:16px;border-top:1px solid #e8e5e0;color:#9b958e;font-size:13px}
+.foot a{color:#6b6560;font-weight:500}
+.foot a:hover{color:#c96442}
+
+@media(max-width:560px){
+  .page{padding:40px 16px 32px}
+  h1{font-size:28px}
+  .features{grid-template-columns:1fr}
+  .ep-d{display:none}
+}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="page">
   <div class="hero">
+    <div class="pill">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Mail.tm-compatible API
+    </div>
     <h1>Outlook2API</h1>
-    <p>Mail.tm-compatible REST API for Outlook accounts</p>
+    <p>REST API for Outlook/Hotmail/Live accounts with admin panel, webmail, and batch registration</p>
   </div>
-  <div class="cards" id="stats">
-    <div class="card"><h3>Total Accounts</h3><p id="stat-total">-</p></div>
-    <div class="card"><h3>Active</h3><p id="stat-active">-</p></div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-l">Total Accounts</div>
+      <div class="stat-v" id="st">&mdash;</div>
+    </div>
+    <div class="stat">
+      <div class="stat-l">Active</div>
+      <div class="stat-v" id="sa">&mdash;</div>
+    </div>
   </div>
+
+  <div class="features">
+    <div class="feat">
+      <div class="feat-ico fi-mail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+      <h3>Mail API</h3>
+      <p>Mail.tm-compatible Hydra API for domains, accounts, tokens, and messages</p>
+    </div>
+    <div class="feat">
+      <div class="feat-ico fi-admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+      <h3>Admin Panel</h3>
+      <p>Web UI for account management, webmail with compose &amp; reply, bulk import/export</p>
+    </div>
+    <div class="feat">
+      <div class="feat-ico fi-code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+      <h3>Verification Codes</h3>
+      <p>Auto-extract 6-digit OTP from emails via <code>/messages/{id}/code</code></p>
+    </div>
+    <div class="feat">
+      <div class="feat-ico fi-ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+      <h3>CI Auto-Import</h3>
+      <p>GitHub Actions for automated Outlook registration &amp; account import</p>
+    </div>
+  </div>
+
   <div class="links">
-    <a href="/admin" class="link-card">
-      <div><div class="label">Admin Panel</div><div class="desc">Manage accounts, import, export</div></div>
-      <span class="arrow">&rarr;</span>
+    <a href="/admin" class="link">
+      <div class="link-ico li-admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+      <div class="link-txt"><div class="link-t">Admin Panel</div><div class="link-d">Manage accounts, webmail, import/export</div></div>
+      <span class="link-arr">&rarr;</span>
     </a>
-    <a href="/docs" class="link-card">
-      <div><div class="label">API Documentation</div><div class="desc">Interactive Swagger UI</div></div>
-      <span class="arrow">&rarr;</span>
-    </a>
-    <a href="/redoc" class="link-card">
-      <div><div class="label">ReDoc</div><div class="desc">Alternative API reference</div></div>
-      <span class="arrow">&rarr;</span>
+    <a href="/docs" class="link">
+      <div class="link-ico li-docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <div class="link-txt"><div class="link-t">API Documentation</div><div class="link-d">Interactive Swagger UI with all endpoints</div></div>
+      <span class="link-arr">&rarr;</span>
     </a>
   </div>
-  <div class="footer">Outlook2API &middot; <a href="https://github.com/shenhao-stu/outlook2api">GitHub</a></div>
+
+  <div class="api-ref">
+    <div class="api-hdr"><h3>Quick API Reference</h3><span>Mail.tm-compatible</span></div>
+    <div class="ep"><span class="m m-g">GET</span><span class="ep-p">/domains</span><span class="ep-d">List email domains</span></div>
+    <div class="ep"><span class="m m-p">POST</span><span class="ep-p">/accounts</span><span class="ep-d">Register account</span></div>
+    <div class="ep"><span class="m m-p">POST</span><span class="ep-p">/token</span><span class="ep-d">Get JWT token</span></div>
+    <div class="ep"><span class="m m-g">GET</span><span class="ep-p">/messages</span><span class="ep-d">List inbox messages</span></div>
+    <div class="ep"><span class="m m-g">GET</span><span class="ep-p">/messages/{id}/code</span><span class="ep-d">Extract verification code</span></div>
+    <div class="ep"><span class="m m-d">DELETE</span><span class="ep-p">/accounts/me</span><span class="ep-d">Delete account</span></div>
+  </div>
+
+  <div class="foot">Outlook2API &middot; <a href="https://github.com/shenhao-stu/outlook2api">GitHub</a></div>
 </div>
 <script>
-fetch('/admin/api/stats').then(r=>{if(r.ok)return r.json();throw r}).then(d=>{
-  document.getElementById('stat-total').textContent=d.total;
-  document.getElementById('stat-active').textContent=d.active;
-}).catch(()=>{});
+fetch('/admin/api/public-stats').then(function(r){if(r.ok)return r.json();throw r}).then(function(d){
+  document.getElementById('st').textContent=d.total!=null?d.total:0;
+  document.getElementById('sa').textContent=d.active!=null?d.active:0;
+}).catch(function(){
+  document.getElementById('st').textContent='0';
+  document.getElementById('sa').textContent='0';
+});
 </script>
 </body>
 </html>

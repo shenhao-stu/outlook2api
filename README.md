@@ -5,7 +5,7 @@ Mail.tm-compatible REST API for Outlook/Hotmail/Live accounts with admin panel a
 ## Features
 
 - **Mail API** — Mail.tm-compatible Hydra API endpoints (domains, accounts, token, messages)
-- **Admin Panel** — Web UI for account management, bulk import/export, stats dashboard
+- **Admin Panel** — Web UI for account management, bulk import/export, webmail with compose/reply, stats dashboard
 - **Batch Registration** — Automated Outlook account creation via GitHub Actions
 - **CI Auto-Import** — Registered accounts automatically imported to admin panel
 - **Verification Code Extraction** — `GET /messages/{id}/code` extracts OTP from emails
@@ -20,7 +20,7 @@ pip install -r requirements-api.txt
 python -m outlook2api.app
 
 # Open http://localhost:8001 for homepage
-# Open http://localhost:8001/admin for admin panel (default password: admin)
+# Open http://localhost:8001/admin for admin panel (default password: bk@3fd3E)
 ```
 
 ### Docker
@@ -58,6 +58,8 @@ docker compose up -d outlook2api
 | PATCH | `/admin/api/accounts/{id}` | Toggle active / update notes |
 | DELETE | `/admin/api/accounts/{id}` | Delete account |
 | GET | `/admin/api/accounts/{id}/password` | Reveal password |
+| GET | `/admin/api/accounts/{id}/messages` | Fetch messages via IMAP |
+| POST | `/admin/api/accounts/{id}/send` | Send email via SMTP |
 | GET | `/admin/api/export` | Export all active accounts |
 
 ## CI Auto-Import
@@ -80,10 +82,12 @@ gh workflow run register-outlook.yml -f count=5 -f threads=1
 | Name | Default | Description |
 |------|---------|-------------|
 | `OUTLOOK2API_JWT_SECRET` | `change-me-in-production` | JWT signing secret |
-| `ADMIN_PASSWORD` | `admin` | Admin panel password |
+| `ADMIN_PASSWORD` | `bk@3fd3E` | Admin panel password |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./data/outlook2api.db` | Database URL |
 | `OUTLOOK2API_HOST` | `0.0.0.0` | API bind host |
 | `OUTLOOK2API_PORT` | `8001` | API bind port |
+| `OUTLOOK_SMTP_HOST` | `smtp-mail.outlook.com` | SMTP server host |
+| `OUTLOOK_SMTP_PORT` | `587` | SMTP server port |
 
 ## HuggingFace Deployment
 
@@ -101,6 +105,7 @@ outlook2api/
 │   ├── auth.py                # JWT auth helpers
 │   ├── config.py              # Environment config
 │   ├── outlook_imap.py        # IMAP client
+│   ├── outlook_smtp.py        # SMTP client (send email)
 │   ├── store.py               # Legacy JSON file store
 │   └── static/                # Frontend
 │       ├── index.html         # Homepage

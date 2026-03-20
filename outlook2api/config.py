@@ -18,4 +18,6 @@ def get_config() -> dict:
             "DATABASE_URL",
             "sqlite+aiosqlite:///./data/outlook2api.db",
         ),
+        "smtp_host": os.environ.get("OUTLOOK_SMTP_HOST", "smtp-mail.outlook.com"),
+        "smtp_port": int(os.environ.get("OUTLOOK_SMTP_PORT", "587")),
     }

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from outlook2api.config import get_config
 from outlook2api.database import Account, get_db, get_stats
 from outlook2api.outlook_imap import fetch_messages_imap
+from outlook2api.outlook_smtp import send_email
 
 admin_router = APIRouter(prefix="/admin/api", tags=["admin"])
 
@@ -52,6 +53,16 @@ class BulkImportRequest(BaseModel):
     source: str = "import"
 
 
+class SendEmailRequest(BaseModel):
+    to: str
+    subject: str
+    body_text: str = ""
+    body_html: str = ""
+    cc: str = ""
+    in_reply_to: str = ""
+    references: str = ""
+
+
 @admin_router.post("/login")
 async def admin_login(body: LoginRequest):
     cfg = get_config()
@@ -59,6 +70,13 @@ async def admin_login(body: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid password")
     token = hashlib.sha256(cfg["admin_password"].encode()).hexdigest()
     return {"token": token}
+
+
+@admin_router.get("/public-stats")
+async def public_stats(db: AsyncSession = Depends(get_db)):
+    """Public stats (no auth) — total and active account counts."""
+    stats = await get_stats(db)
+    return {"total": stats.get("total", 0), "active": stats.get("active", 0)}
 
 
 @admin_router.get("/stats")
@@ -297,3 +315,33 @@ async def get_account_messages(
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"IMAP error: {e}")
     return {"email": account.email, "messages": messages}
+
+
+@admin_router.post("/accounts/{account_id}/send")
+async def send_account_email(
+    account_id: str,
+    body: SendEmailRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Send an email from an account via SMTP."""
+    _verify_admin(request)
+    account = (await db.execute(select(Account).where(Account.id == account_id))).scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        result = await asyncio.to_thread(
+            send_email,
+            from_addr=account.email,
+            password=account.password,
+            to_addr=body.to,
+            subject=body.subject,
+            body_text=body.body_text,
+            body_html=body.body_html,
+            cc=body.cc,
+            in_reply_to=body.in_reply_to,
+            references=body.references,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    return result
