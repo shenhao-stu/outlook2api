@@ -17,6 +17,11 @@ class Base(DeclarativeBase):
     pass
 
 
+def _utcnow() -> datetime:
+    """Return current UTC time as a naive datetime (no tzinfo) for PostgreSQL compatibility."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class Account(Base):
     __tablename__ = "accounts"
 
@@ -24,8 +29,8 @@ class Account(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    last_used = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+    last_used = Column(DateTime, nullable=True)
     usage_count = Column(Integer, default=0)
     source = Column(String, default="manual")  # manual, ci, import
     notes = Column(Text, default="")
