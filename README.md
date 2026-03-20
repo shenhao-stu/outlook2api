@@ -1,3 +1,12 @@
+---
+title: Outlook2API
+emoji: 📧
+colorFrom: orange
+colorTo: red
+sdk: docker
+app_port: 7860
+---
+
 # Outlook2API
 
 Mail.tm-compatible REST API for Outlook/Hotmail/Live accounts with admin panel and batch account registration.
