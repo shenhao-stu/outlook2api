@@ -1,8 +1,8 @@
 ---
 title: Outlook2API
 emoji: 📧
-colorFrom: orange
-colorTo: red
+colorFrom: red
+colorTo: yellow
 sdk: docker
 app_port: 7860
 ---
