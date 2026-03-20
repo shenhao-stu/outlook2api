@@ -91,10 +91,9 @@ async def admin_stats(
 ):
     _verify_admin(request)
     stats = await get_stats(db)
-    # Recent accounts (last 7 days)
-    week_ago = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
+    # Recent accounts (last 7 days) — use naive UTC to match column type
     from datetime import timedelta
-    week_ago = week_ago - timedelta(days=7)
+    week_ago = datetime.utcnow().replace(hour=0, minute=0, second=0) - timedelta(days=7)
     recent = (await db.execute(
         select(func.count(Account.id)).where(Account.created_at >= week_ago)
     )).scalar() or 0
