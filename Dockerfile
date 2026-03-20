@@ -10,6 +10,7 @@ COPY pyproject.toml .
 
 RUN mkdir -p /tmp/data
 
+# Default to SQLite; override with DATABASE_URL env var for PostgreSQL persistence
 ENV DATABASE_URL=sqlite+aiosqlite:////tmp/data/outlook2api.db
 ENV OUTLOOK2API_PORT=7860
 

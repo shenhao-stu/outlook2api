@@ -1,8 +1,10 @@
 """SQLAlchemy async database setup and models."""
 from __future__ import annotations
 
+import ssl as _ssl
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 from sqlalchemy import Column, String, Boolean, DateTime, Integer, Text, select, func
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -51,15 +53,31 @@ def _get_db_url() -> str:
     # Convert postgres:// to postgresql+asyncpg://
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif url.startswith("postgresql://"):
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Strip sslmode from URL — handled via connect_args instead
+    if "asyncpg" in url and "sslmode=" in url:
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+        params.pop("sslmode", None)
+        new_query = urlencode(params, doseq=True)
+        url = urlunparse(parsed._replace(query=new_query))
     return url
+
+
+def _needs_ssl() -> bool:
+    """Check if the configured database URL requires SSL."""
+    url = get_config()["database_url"]
+    return "sslmode=require" in url or "ssl=true" in url
 
 
 async def init_db() -> None:
     global _engine, _session_factory
     url = _get_db_url()
-    connect_args = {"check_same_thread": False} if "sqlite" in url else {}
+    is_sqlite = "sqlite" in url
+    connect_args: dict = {"check_same_thread": False} if is_sqlite else {}
+    if not is_sqlite and _needs_ssl():
+        connect_args["ssl"] = _ssl.create_default_context()
     _engine = create_async_engine(url, echo=False, connect_args=connect_args)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     async with _engine.begin() as conn:

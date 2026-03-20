@@ -7,11 +7,13 @@ import time
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from outlook2api.auth import make_jwt, get_current_user
 from outlook2api.config import get_config
+from outlook2api.database import Account, get_db
 from outlook2api.outlook_imap import fetch_messages_imap, validate_login
-from outlook2api.store import AccountStore, get_store
 
 router = APIRouter()
 
@@ -38,7 +40,7 @@ def get_domains():
 
 
 @router.post("/accounts")
-def create_account(body: AccountCreate, store: AccountStore = Depends(get_store)):
+async def create_account(body: AccountCreate, db: AsyncSession = Depends(get_db)):
     address = body.address.strip().lower()
     password = body.password
     if not address or "@" not in address:
@@ -49,22 +51,29 @@ def create_account(body: AccountCreate, store: AccountStore = Depends(get_store)
         raise HTTPException(status_code=400, detail=f"Domain {domain} not supported")
     if not validate_login(address, password):
         raise HTTPException(status_code=401, detail="Invalid credentials or IMAP disabled")
-    store.add(address, password)
+    # Add to database if not exists
+    existing = (await db.execute(select(Account).where(Account.email == address))).scalar_one_or_none()
+    if not existing:
+        db.add(Account(email=address, password=password, source="api"))
+        await db.commit()
     return {"id": f"/accounts/{secrets.token_hex(8)}", "address": address, "createdAt": time.time()}
 
 
 @router.post("/token")
-def get_token(body: TokenRequest, store: AccountStore = Depends(get_store)):
+async def get_token(body: TokenRequest, db: AsyncSession = Depends(get_db)):
     address = body.address.strip().lower()
     password = body.password
-    if not store.has(address):
+    # Check database first
+    account = (await db.execute(select(Account).where(Account.email == address))).scalar_one_or_none()
+    if account:
+        if account.password != password:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+    else:
+        # Not in database — validate via IMAP and add
         if not validate_login(address, password):
             raise HTTPException(status_code=401, detail="Invalid credentials")
-        store.add(address, password)
-    else:
-        pwd = store.get_password(address)
-        if pwd != password:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+        db.add(Account(email=address, password=password, source="api"))
+        await db.commit()
     secret = get_config().get("jwt_secret", "change-me-in-production")
     token = make_jwt(address, password, secret)
     return {"token": token, "id": address}
@@ -118,8 +127,11 @@ async def get_message_code(
 
 @router.delete("/accounts/me")
 async def delete_account(
-    store: AccountStore = Depends(get_store),
+    db: AsyncSession = Depends(get_db),
     user: tuple[str, str] = Depends(get_current_user),
 ):
-    store.remove(user[0])
+    account = (await db.execute(select(Account).where(Account.email == user[0]))).scalar_one_or_none()
+    if account:
+        await db.delete(account)
+        await db.commit()
     return {"status": "deleted"}
