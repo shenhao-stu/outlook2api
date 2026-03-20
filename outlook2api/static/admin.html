@@ -81,6 +81,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:
 .nav svg{width:18px;height:18px;flex-shrink:0}
 .side-foot{margin-top:auto;padding-top:.5rem;border-top:1px solid var(--border);display:flex;flex-direction:column}
 .main{margin-left:240px;flex:1;padding:2rem 2.5rem;max-width:1000px;width:100%}
+.main.mail-active{max-width:none;padding:.5rem}
 .main h2{font-size:1.35rem;margin-bottom:1.2rem;font-weight:700;letter-spacing:-.01em}
 
 /* ---- Mobile ---- */
@@ -92,6 +93,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:
   .ov.open{display:block}
   .menu-btn{display:block}
   .main{margin-left:0;padding:1rem;padding-top:3.5rem}
+  .main.mail-active{padding:.5rem;padding-top:3.5rem}
   .mb-wrap{flex-direction:column;height:auto!important}
   .mb-col1,.mb-col2{width:100%!important;height:200px;border-right:none!important;border-bottom:1px solid var(--border)}
   .mb-col3{height:400px}
@@ -152,7 +154,7 @@ tr:hover td{background:var(--brand-bg)}
 .m-del{background:var(--err-bg);color:var(--err)}
 
 /* ---- Mailbox 3-col ---- */
-.mb-wrap{display:flex;height:calc(100vh - 10px);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;background:var(--surface)}
+.mb-wrap{display:flex;height:calc(100vh - 60px);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;background:var(--surface)}
 .mb-col1{width:240px;border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
 .mb-col2{width:300px;border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
 .mb-col3{flex:1;background:var(--bg2);display:flex;flex-direction:column;min-width:0;overflow:hidden}
@@ -350,8 +352,8 @@ pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;paddin
             <span id="mbLink"></span>
           </div>
         </div>
-        <div style="flex:1;padding:1rem;overflow:auto">
-          <iframe id="mbBody" style="width:100%;height:100%;min-height:400px;border:1px solid var(--border);border-radius:var(--r);background:#fff" sandbox="allow-same-origin"></iframe>
+        <div style="flex:1;padding:1rem;overflow:auto;min-height:0">
+          <iframe id="mbBody" style="width:100%;height:100%;min-height:300px;border:1px solid var(--border);border-radius:var(--r);background:#fff" sandbox="allow-same-origin"></iframe>
         </div>
       </div>
       <!-- Compose view -->
@@ -528,6 +530,11 @@ var tabs=['dash','acct','imp','mail','docs'];
 function loadTab(t){
   tabs.forEach(function(id){hide('t-'+id)});
   show('t-'+t,'block');
+  var mainEl=document.querySelector('.main');
+  if(mainEl){
+    if(t==='mail'){mainEl.classList.add('mail-active')}
+    else{mainEl.classList.remove('mail-active')}
+  }
   if(t==='dash')loadDash();
   if(t==='acct'){page=1;loadAccts()}
   if(t==='mail')loadMbAccts();
@@ -827,8 +834,30 @@ $('sendBtn').onclick=function(){
 W._mb=function(id,email){
   curTab='mail';
   navBtns.forEach(function(b){b.classList.remove('on');if(b.getAttribute('data-t')==='mail')b.classList.add('on')});
-  loadTab('mail');
-  setTimeout(function(){selectMbAcct(id,email)},300);
+  tabs.forEach(function(tid){hide('t-'+tid)});
+  show('t-mail','block');
+  var mainEl=document.querySelector('.main');
+  if(mainEl)mainEl.classList.add('mail-active');
+  // Load accounts then select the target account
+  var list=$('mbAcctList');
+  list.innerHTML='<div class="mb-empty">Loading...</div>';
+  api('/admin/api/accounts?limit=500').then(function(d){
+    mbAccts=d.accounts||[];
+    if(!mbAccts.length){list.innerHTML='<div class="mb-empty">No accounts</div>';return}
+    list.innerHTML=mbAccts.map(function(a){
+      return '<div class="mb-item'+(a.id===id?' on':'')+'" data-id="'+esc(a.id)+'" data-em="'+esc((a.email||'').toLowerCase())+'">'
+        +'<div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.83rem">'+esc(a.email||'')+'</div>'
+        +'<div style="color:var(--text3);font-size:.73rem;margin-top:.15rem">'
+        +'<span class="badge '+(a.is_active!==false?'b-ok':'b-err')+'" style="font-size:.65rem">'+(a.is_active!==false?'Active':'Inactive')+'</span>'
+        +' '+esc(a.source||'')+'</div>'
+        +'</div>';
+    }).join('');
+    list.querySelectorAll('.mb-item').forEach(function(el){
+      el.onclick=function(){selectMbAcct(el.getAttribute('data-id'),el.getAttribute('data-em'))};
+    });
+    populateCFrom();
+    selectMbAcct(id,email);
+  }).catch(function(e){list.innerHTML='<div class="mb-empty">Error loading</div>'});
 };
 
 /* ========== API DOCS ========== */
